@@ -50,6 +50,8 @@ So far only tested with a Ubiquiti Picostation 2 HP.
 
 It seems that at least the Picostation 2 HP does not accept firmware images larger than 4 MB via the web upload procedure, even though it has 8 MB of flash.
 
+If node has never been configured, it configures to english language and United States for country. This is not a problem if you're flashing e.g. OpenWRT, since that will override these settings.
+
 Could use some more descriptive error messages. Especially with regards to wrong username, password or ip.
 
 License: GPLv3
