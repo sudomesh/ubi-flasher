@@ -1,0 +1,5 @@
+#!/bin/sh
+
+rm -rf node_modules/request
+cd node_modules
+git clone --depth=1 https://github.com/sudomesh/ubiquiti-flasher

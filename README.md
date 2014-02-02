@@ -9,6 +9,20 @@ Known problems
 
 Currently there is a bug in the request library that causes the content-length to not be automatically calculated for multi-part posts. Use the fork of request at https://github.com/juul/request for now.
 
+Setup
+-----
+
+Install dependencies:
+
+```
+npm install
+```
+Install patched version of request library:
+
+```
+./get_patched_request
+```
+
 Usage
 -----
 
