@@ -58,9 +58,9 @@ function upload_firmware() {
 
     form.append('fwfile', firmware, {
         header: "--" + form.getBoundary() + "\r\n" + "Content-Disposition: form-data; name=\"fwfile\"; filename=\"firmware.bin\"\r\nContent-Type: application/octet-stream\r\n\r\n"
-
     });
 
+    console.log("Sending firmware");
 }
 
 // url is e.g. /index.cgi
@@ -92,7 +92,7 @@ function login_initial() {
             throw("Error: Got unexpected response: " + resp.statusCode + "\n\n" + body);
         }
 
-        get(resp.headers.location, function(resp, body) {
+        get('/upgrade.cgi', function(resp, body) {
             upload_firmware();
         });
 
