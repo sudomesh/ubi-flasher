@@ -1,0 +1,26 @@
+{
+  "name": "ubiquiti-flasher",
+  "version": "0.0.1",
+  "description": "Automatic flasher for Ubiquiti devices that uses the Ubiquiti web interface to flash.",
+  "dependencies": {
+    "cheerio": "~0.13.1",
+    "optimist": "~0.6.0",
+    "request": "~2.33.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/sudomesh/ubiquiti-flasher.git"
+  },
+  "keywords": [
+    "ubiquiti",
+    "flash",
+    "flasher",
+    "automatic",
+    "script"
+  ],
+  "author": {
+    "name": "Marc Juul",
+    "email": "juul@sudomesh.org"
+  },
+  "license": "GPLv3"
+}
