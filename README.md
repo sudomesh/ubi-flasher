@@ -1,4 +1,4 @@
-This is a work in progress. Don't expect anything to work.
+This is a work in progress. See the 'limitations' section.
 
 This is an automated firmware flasher for ubiquiti devices.
 
