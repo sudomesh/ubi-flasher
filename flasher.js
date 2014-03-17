@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /*
- Copyright 2014 Marc Juul
- License: GPLv3
+  Copyright 2014 Marc Juul
+  License: GPLv3
 
   This file is part of ubi-flasher.
 

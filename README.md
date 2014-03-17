@@ -91,3 +91,7 @@ More testing would be nice.
 # License #
 
 GPLv3
+
+# Appreciation #
+
+If you appreciate this program, then you can [tip me with recurring micro-donations on GitTip](https://www.gittip.com/juul/), or [tip me with one-off donations on Flattr](https://flattr.com/profile/juul). This helps me spend all of my time making useful free and open source things :)
