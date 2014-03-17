@@ -21,6 +21,7 @@
 */
 
 var fs = require('fs');
+var path = require('path');
 var request = require('request');
 var cheerio = require('cheerio');
 var sleep = require('sleep').sleep;
@@ -38,8 +39,6 @@ if(!argv.firmware) {
     console.log("You must supply firmware filename with --firmware");
     process.exit(1);
 }
-
-var firmware_file = argv.firmware;
 
 function debug(str) {
     if(argv.debug) {
@@ -60,9 +59,52 @@ function confirm_upload(cb) {
     });
 }
 
-function upload_firmware(cb) {
+function select_firmware(model, dir) {
+    var regex = null;
+    if(model.match(/rocket/i)) {
+        regex = /rocket.*m.*jffs2.*factory.*bin$/i
+    } else if(model.match(/nano/i)) {
+        regex = /nano.*m.*jffs2.*factory.*bin$/i
+    } else if(model.match(/bullet/i)) {
+        regex = /bullet.*m.*jffs2.*factory.*bin$/i
+    } else if(model.match(/unifi.*outdoor/i)) {
+        regex = /unifi.*outdoor.*jffs2.*factory.*bin$/i
+    } else if(model.match(/unifi/i)) {
+        regex = /unifi.*jffs2.*factory.*bin$/i
+    } else {
+        return null;
+    }
 
-    var firmware = fs.readFileSync(firmware_file);
+    var files = fs.readdirSync(dir);
+    var i, file;
+    for(i=0; i < files.length; i++) {
+        file = files[i];
+        debug("Checking: " + file);
+        if(file.match(regex)) {
+            debug("Found firmware file matching router model: " + file);
+            return path.resolve(path.join(dir, file));
+        }
+    }
+    return null;
+}
+
+function upload_firmware(model, cb) {
+
+    var firmware_path;
+    var stats = fs.statSync(argv.firmware);
+
+    if(stats.isDirectory()) {
+        firmware_path = select_firmware(model, argv.firmware);
+        if(!firmware_path) {
+            return cb("Error: Could not find the correct firmware for your device in the supplied directory. This could just be a failing of ubi-flasher.");
+        }
+    } else if(stats.isFile()) {
+        firmware_path = argv.firmware;
+    } else {
+        return cb("Error: Specified firmware path is neither a directory nor a file");
+    }
+
+    var firmware = fs.readFileSync(firmware_path);
 
     var r = request.post({
         uri: host+'/upgrade.cgi',
@@ -92,12 +134,12 @@ function get(url, cb) {
         uri: host+url, 
         jar: true,
     }, function(err, resp, body) {
-        if(err) throw("error: " + err);
+        if(err) return cb(err);
         if(resp.statusCode != 200) {
-            throw("error: got unexpected response for " + url + ": " + resp.statusCode + "\n\n" + body );
+            return cb("error: got unexpected response for " + url + ": " + resp.statusCode + "\n\n" + body );
         }
         if(cb) {
-            cb(resp, body);
+            cb(null, resp, body);
         }
     });    
 }
@@ -117,10 +159,13 @@ function login_initial(cb) {
             throw("Error: Got unexpected response: " + resp.statusCode + "\n\n" + body);
         }
         debug("Login appears to have been successful");
+        
 
-        get('/upgrade.cgi', function(resp, body) {
-            upload_firmware(cb);
-        });
+        check_model(cb);
+
+//        get('/upgrade.cgi', function(resp, body) {
+//            upload_firmware(cb);
+//        });
 
     });
 
@@ -153,15 +198,48 @@ function login_normal(cb) {
 
         // TODO check for failed login
 
-        get('/upgrade.cgi', function(resp, body) {
-            upload_firmware(cb);
-        });
+        check_model(cb);
     });
 
     var form = r.form();
     form.append('username', username);
     form.append('password', password);
     form.append('uri', '');
+}
+
+function check_model(cb) {
+
+    get('/index.cgi', function(err, resp, body) {
+        if(err) return cb(err);
+
+        $ = cheerio.load(body);
+        var model = null;
+
+        var title = $('title');
+        if(title && (title.length >= 1)) {
+            title = title.html();
+            if(title && (title != '')) {
+                debug("<title> tag conatins: " + title);
+                var m = title.match(/\[([^\]]+)\]/);
+                if(m && (m.length >= 1)) {
+                    model = m[1];
+                }
+            }
+        }
+
+        if(model) {
+            console.log("Identified router model as: " + model);
+        } else {
+            console.log("Could not identify router model.");
+        }
+
+        get('/upgrade.cgi', function(err, resp, body) {
+            if(err) return cb(err);
+            upload_firmware(model, cb);
+        });
+
+    });
+
 }
 
 // hack based on:

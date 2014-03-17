@@ -2,7 +2,7 @@ This is an automated firmware flasher for Ubiquiti AirMax devices.
 
 It flashes a new firmware onto these devices using their built-in web interface.
 
-Ubiquiti, AirMax, Picostation and Rocket M5 are registered trademarks of Ubiquiti Networks, Inc. Neither this program, nor its author, have any affiliation with Ubiquiti Networks, Inc.
+Ubiquiti, AirMax, Picostation, Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor are registered trademarks of Ubiquiti Networks, Inc. Neither this program, nor its author, have any affiliation with Ubiquiti Networks, Inc.
 
 # Setup #
 
@@ -34,6 +34,14 @@ The "--retryonfail 5" argument causes the flasher to retry every five seconds af
 
 The "--retryonsuccess 20" argument causes the flasher to begin flashing again after waiting 20 seconds after a successful flash. This is useful for flashing multiple nodes without having to restart the flasher program.
 
+Auto-selecting the correct firmware:
+
+```
+./flasher.js --firmware openwrt/attitude_adjustment/12.09/ar71xx/generic/
+```
+
+The above command expects a directory full of the various firmware files for the ar71xx like the one [here](http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/). It will attempt to auto-detect the model of router by inspecting the <title> tag on the index.cgi page of the router's web admin interface and look for the correct firmware file for the model in the supplied directory. Currently it will probably work with routers of the following types: Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor. Not all of those are tested and it will most definitely not work with any other models without tweaking the select_firmware function in flasher.js.
+
 # Setting up a flashing server #
 
 If you want a server with an ethernet plug that will flash any devices that get connected with your firmware of choice, then you can use the initscript:
@@ -62,15 +70,24 @@ Assuming you have an existing network interface eth0 on a 192.168.1.x network an
 ```
 sudo ifconfig eth1 down
 sudo ip addr add 192.168.1.254 dev eth1
+sudo ifconfig eth1 up
 sudo ip route add 192.168.1.20 dev eth1 metric 1
 sudo ip route add 192.168.1.254 dev eth1 metric 1
 ```
 
 You probably want to add these commands to the "start()" function in the init script, so they are run on start-up, though take out the "sudo" part before you do.
 
-Your server will no longer be able to access 192.168.1.20 nor 192.168.1.254 on the network connected to eth0, nor will computers on those IPs be able to communicate with your server.
+You may also need to add the line "metric 10" to /etc/network/interfaces in the section for eth0 and run:
+
+```
+ifdown eth0 && ifup eth0
+```
+
+After setting this up, your server will no longer be able to access 192.168.1.20 nor 192.168.1.254 on the network connected to eth0, nor will computers on those IPs be able to communicate with your server.
 
 # Limitations #
+
+If specifying a directory as the --directory argument, then the jffs2 filesystem version of the image will always be selected.
 
 So far, this program has only tested with a Ubiquiti Picostation 2 HP and a Ubiquiti Rocket M5.
 
