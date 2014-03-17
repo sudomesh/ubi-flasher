@@ -1,17 +1,21 @@
 {
-  "name": "ubiquiti-flasher",
-  "version": "0.0.1",
-  "description": "Automatic flasher for Ubiquiti devices that uses the Ubiquiti web interface to flash.",
+  "name": "ubi-flasher",
+  "version": "0.1.0",
+  "description": "Un-official automatic flasher for Ubiquiti AirMax devices that uses the built-in web interface to flash. Ubiquiti is a trademark of Ubiquiti Networks, Inc",
   "dependencies": {
     "cheerio": "~0.13.1",
     "optimist": "~0.6.0",
-    "request": "~2.33.0"
+    "request-alt": "git://github.com/juul/request.git"
   },
   "repository": {
     "type": "git",
-    "url": "http://github.com/sudomesh/ubiquiti-flasher.git"
+    "url": "http://github.com/sudomesh/ubi-flasher.git"
   },
   "keywords": [
+    "ubnt",
+    "ubiquity",
+    "firmware",
+    "openwrt",
     "ubiquiti",
     "flash",
     "flasher",
@@ -22,5 +26,5 @@
     "name": "Marc Juul",
     "email": "juul@sudomesh.org"
   },
-  "license": "GPLv3"
+  "license": "GPL-3.0"
 }
