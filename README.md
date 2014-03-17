@@ -27,13 +27,7 @@ Simple example, for a router with default ip, username and password:
 All supported command line options:
 
 ```
-./flasher.js --user foo --pass bar --ip 10.0.0.1 --firmware myfirmware.bin
-```
-
-Simple example, with debug output enabled:
-
-```
-./flasher.js --firmware myfirmware.bin --debug
+./flasher.js --user foo --pass bar --ip 10.0.0.1 --firmware myfirmware.bin --debug
 ```
 
 # Limitations #
