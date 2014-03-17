@@ -23,6 +23,7 @@
 var fs = require('fs');
 var request = require('request');
 var cheerio = require('cheerio');
+var sleep = require('sleep').sleep;
 var argv = require('optimist').argv;
 
 var username = argv.user || argv.username || 'ubnt';
@@ -46,23 +47,20 @@ function debug(str) {
     }
 }
 
-function confirm_upload() {
+function confirm_upload(cb) {
     var r = request.post({
         uri: host+'/fwflash.cgi',
         jar: true
     }, function(err, resp, body) {
-        if(err) throw("Error: " + err);
+        if(err) return cb(err);
         if(resp.statusCode != 200) {
-            throw("error: got unexpected response for while trying to flash firmware: "+ resp.statusCode);
+            return cb("error: got unexpected response for while trying to flash firmware: "+ resp.statusCode);
         }
-        console.log("Firmware flashing begun.");
-        console.log("In a few seconds, the router should begin flashing its four status LEDs sweeping from left to right, then right to left (or up down, down up).");
-        console.log("This means that the firmware is being flashed.");
-        console.log("Once the router goes back to having only the power LED lit, the router has been successfully flashed.");
+        cb(null);
     });
 }
 
-function upload_firmware() {
+function upload_firmware(cb) {
 
     var firmware = fs.readFileSync(firmware_file);
 
@@ -70,13 +68,12 @@ function upload_firmware() {
         uri: host+'/upgrade.cgi',
         jar: true
     }, function(err, resp, body) {
-        if(err) throw("Error: " + err);
+        if(err) return cb(err);
         if(resp.statusCode != 200) {
-            console.log(resp);
-            throw("error: got unexpected response for while trying to upload firmware: "+ resp.statusCode);
+            return cb("Error: got unexpected response for while trying to upload firmware: "+ resp.statusCode);
         }
         console.log("Firmware uploaded successfully.");
-        confirm_upload();
+        confirm_upload(cb);
     });
 
     var form = r.form();
@@ -107,7 +104,7 @@ function get(url, cb) {
 
 // log in using the initial login screen
 // (the one you get if you've never logged in before)
-function login_initial() {
+function login_initial(cb) {
 
     var r = request.post({
         uri: host+'/login.cgi',
@@ -122,7 +119,7 @@ function login_initial() {
         debug("Login appears to have been successful");
 
         get('/upgrade.cgi', function(resp, body) {
-            upload_firmware();
+            upload_firmware(cb);
         });
 
     });
@@ -131,7 +128,7 @@ function login_initial() {
     // the request.post call but it actually works 
     // as expected and is the correct way to do this. 
     // It works because the request.post isn't fired
-    // until the next tick of the vent loop
+    // until the next tick of the event loop
     var form = r.form();
     form.append('username', username);
     form.append('password', password);
@@ -143,21 +140,21 @@ function login_initial() {
 
 // log in using the initial login screen
 // (the one you get if you've never logged in before)
-function login_normal() {
+function login_normal(cb) {
     var r = request.post({
         uri: host+'/login.cgi',
         jar: true
     }, function(err, resp, body) {
-        if(err) throw("Error: " + err);
+        if(err) return cb(err);
 
         if(resp.statusCode != 302) {
-            throw("Error: Got unexpected response: " + resp.statusCode + "\n\n" + body);
+            return cb("Error: Got unexpected response: " + resp.statusCode + "\n\n" + body);
         }
 
         // TODO check for failed login
 
         get('/upgrade.cgi', function(resp, body) {
-            upload_firmware();
+            upload_firmware(cb);
         });
     });
 
@@ -171,9 +168,9 @@ function login_normal() {
 // https://github.com/mikeal/request/issues/418
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-function main(url) {
+function flash(url, cb) {
 
-debug("Accessing " + url);
+    debug("Accessing " + url);
 
     request({
         method: 'GET',
@@ -182,9 +179,9 @@ debug("Accessing " + url);
         rejectUnauthorized: true,
         strictSSL: false
     }, function(err, resp, body) {
-        if(err) throw("error: " + err);
+        if(err) return cb(err);
         if(resp.statusCode != 200) {
-            throw("error: got unexpected response " + resp.statusCode + "\n\n" + body );
+            return cb("error: got unexpected response with status: " + resp.statusCode + "\n\n and body:" + body );
         }
         
         // if not already using https, check if the server wants us to switch to https and then switch
@@ -192,7 +189,7 @@ debug("Accessing " + url);
             if(resp.request && resp.request.uri && (resp.request.uri.protocol.match(/^https/))) {
                 debug("Switching to https");
                 host = 'https://'+ip;
-                main(url.replace(/^http/, 'https'));
+                flash(url.replace(/^http/, 'https'), cb);
                 return;
             }
         }
@@ -204,16 +201,55 @@ debug("Accessing " + url);
         debug("Looks like a login page.");
         if($('#country_select').length > 0) {
             debug("Looks like an older (802.11g) router and it's asking us to select country.");
-            login_initial();
+            login_initial(cb);
         } else if($('#country').length > 0) {
             debug("Looks like a newer (802.11n) router and it's asking us to select country.");
-            login_initial();
+            login_initial(cb);
         } else {
             debug("Router is not asking us to select country.");
-            login_normal();
+            login_normal(cb);
         }
         
     });
 }
 
-main(host+'/login.cgi'); 
+function main() {
+
+    var login_url = host+'/login.cgi';
+
+    flash(login_url, function(err) {
+        if(err) {
+            if(argv.retryonfail) {
+//            if((err.code == 'ECONNREFUSED') || (err.code == 'ENETUNREACH') || (err.code == 'EHOSTUNREACH')) {
+
+                var seconds = parseInt(argv.retryonfail);
+                seconds = (seconds >= 0) ? seconds : 5;
+                console.log("Could not connect. Retrying in " + seconds + " seconds.");
+                sleep(seconds);
+                console.log("Retrying.");
+                main();
+                return;
+//                }
+            }
+            console.log(err);
+            return;
+        }
+
+        console.log("Firmware flashing begun!");
+        console.log("In a few seconds, the router should begin flashing its four status LEDs sweeping from left to right, then right to left (or up down, down up).");
+        console.log("This means that the router is flashing itself with the new firmware.");
+        console.log("Once the router goes back to having only the power LED lit, the router has been successfully flashed.");
+
+        if(argv.retryonsuccess) {
+            var seconds = parseInt(argv.retryonsuccess);
+            seconds = (seconds >= 0) ? seconds : 20;
+            console.log("Will wait "+seconds+" before attempting to flash another device.");
+            sleep(seconds);
+            console.log("Retrying.");
+            main();
+            return;
+        }
+    });   
+}
+
+main();

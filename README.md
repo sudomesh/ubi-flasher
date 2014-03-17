@@ -27,31 +27,67 @@ Simple example, for a router with default ip, username and password:
 All supported command line options:
 
 ```
-./flasher.js --user foo --pass bar --ip 10.0.0.1 --firmware myfirmware.bin --debug
+./flasher.js --user foo --pass bar --ip 10.0.0.1 --firmware myfirmware.bin --retryonfail 5 --retryonsuccess 20 --debug
 ```
+
+The "--retryonfail 5" argument causes the flasher to retry every five seconds after failing to flash, no matter the type of failure, until it succeeds in flashing one device. When one device has been successfully flashed, the flasher will exit, unless "--retryonsuccess" has been specified.
+
+The "--retryonsuccess 20" argument causes the flasher to begin flashing again after waiting 20 seconds after a successful flash. This is useful for flashing multiple nodes without having to restart the flasher program.
+
+# Setting up a flashing server #
+
+If you want a server with an ethernet plug that will flash any devices that get connected with your firmware of choice, then you can use the initscript:
+
+```
+sudo cp initscript /etc/init.d/ubiflasher
+```
+
+Edit the UBIFLASHERPATH and FIRMWARE variables in the script to suit your needs. Then do:
+
+```
+sudo chmod 755 /etc/init.d/ubiflasher
+sudo update-rc.d ubiflasher defaults
+sudo /etc/init.d/ubiflasher start
+```
+Now the flasher is running, will start automatically on boot, and will flash any connected routers.
+
+Remember to set at least one interface on the server to have a static IP in the range 192.168.1.x and _not_ 192.168.1.20.
+
+## Overlapping subnets ##
+
+If you for some reason must run the flasher on a computer that already has another network interface on a 192.168.1.x network, then you can use the following workaround:
+
+Assuming you have an existing network interface eth0 on a 192.168.1.x network and you want to run ubi-flasher on eth1, then ensure that eth0 is not managed by any fancy automation (like network-manager or ifplugd) and run:
+
+```
+sudo ifconfig eth1 down
+sudo ip addr add 192.168.1.254 dev eth1
+sudo ip route add 192.168.1.20 dev eth1 metric 1
+sudo ip route add 192.168.1.254 dev eth1 metric 1
+```
+
+You probably want to add these commands to the "start()" function in the init script, so they are run on start-up, though take out the "sudo" part before you do.
+
+Your server will no longer be able to access 192.168.1.20 nor 192.168.1.254 on the network connected to eth0, nor will computers on those IPs be able to communicate with your server.
 
 # Limitations #
 
-So far this program has only tested with a Ubiquiti Picostation 2 HP and Ubiquiti Rocket M5.
+So far, this program has only tested with a Ubiquiti Picostation 2 HP and a Ubiquiti Rocket M5.
 
-It seems that the Picostation 2 HP does not accept firmware images larger than 4 MB via the web upload procedure, even though it has 8 MB of flash. This is likely the case with all of the previous generation (802.11g) Ubiquiti AirMax gear. This is not an issue on the newer generation (802.11n) gear.
+It seems that the Picostation 2 HP does not accept firmware images larger than 4 MB via the web upload procedure, even though it has 8 MB of flash. This is likely the case with all of the previous generation (802.11g) Ubiquiti AirMax gear. This is not an issue on the newer generation (802.11n) gear. You can still flash the older Ubiquiti gear with > 4 MB images using tftp, but this program does not support tftp.
 
-If node has never been configured, it configures to english language and United States for country. This is not a problem if you're flashing e.g. OpenWRT, since that will override these settings.
+If the AirMax device has never been configured, then the flasher configures it to English for language and United States for country. This is not a problem if you're flashing e.g. OpenWRT, since that will override these settings.
 
-Known issues
---------------
+# Known issues #
 
 Currently there is a bug in the request library that causes the content-length to not be automatically calculated for multi-part posts. For this reason, ubiquiti-flasher is using [a patched version](https://github.com/juul/request) of request from for now.
 
-
-ToDo
-----
+# ToDo #
 
 Could use some more descriptive error messages. Especially with regards to wrong username, password or ip.
 
 More testing would be nice.
 
-License
--------
+# License #
 
 GPLv3
