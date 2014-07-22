@@ -267,7 +267,9 @@ function check_model(cb) {
 
 }
 
-function webflash(url, cb) {
+function webflash(host, cb) {
+
+    var url = host+'/login.cgi';
 
     console.log("Accessing " + url);
     
@@ -342,34 +344,37 @@ function tftpflash(callback) {
     });
 }
 
-
-
-var lastFlashType = null;
-
 function flash(newRouter) {
-    if(newRouter) { // start alternating anew 
-        lastFlashType = null;
-    }
 
-    // alternate between web and tftp flashing
-    // unless forced to use only one of the two
-    if(argv.tftp || (!argv.web && lastFlashType == 'web')) {
-        lastFlashType = 'tftp';
+    if(argv.tftp) {
         tftpflash(flash_callback);
+    } else if(argv.web) {
+        webflash(host, flash_callback);
     } else {
-        lastFlashType = 'web';
-        var login_url = host+'/login.cgi';
-        webflash(login_url, flash_callback);
+        webflash(host, function(err) {
+            if(err) {
+                nice_error(err);
+                tftpflash(flash_callback);
+            }
+        })
+    }
+}
+
+function nice_error(err) {
+    if(err.code == 'ETIMEDOUT') {
+        console.error("Connection timed out");
+    } else if(err.code == 'EHOSTUNREACH') {
+        console.error("Host unreachable");
+    } else if(err.code == 'ECONNREFUSED') {
+        console.error("Connection refused");
+    } else {
+        console.error(err);
     }
 }
 
 function flash_callback(err) {
         if(err) {
-            if(err.code == 'ETIMEDOUT') {
-                console.error("Connection timed out");
-            } else {
-                console.error(err);
-            }
+            nice_error(err);
             if(argv.retryonfail) {
                 var seconds = parseInt(argv.retryonfail);
                 seconds = (seconds >= 0) ? seconds : 5;
@@ -383,6 +388,7 @@ function flash_callback(err) {
         }
 
         console.log("Firmware flashing begun!");
+        console.log("The firmware has been successfully sent to the router.");
         console.log("In a few seconds, the router should begin flashing its four status LEDs sweeping from left to right, then right to left (or up down, down up).");
         console.log("This means that the router is flashing itself with the new firmware.");
         console.log("Once the router goes back to having only the power LED lit, the router has been successfully flashed.");
@@ -393,7 +399,7 @@ function flash_callback(err) {
             console.log("Will wait "+seconds+" before attempting to flash another device.");
             sleep(seconds);
             console.log("Retrying.");
-            flash(true);
+            flash();
             return;
         }
 
