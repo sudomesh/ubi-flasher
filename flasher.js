@@ -21,12 +21,14 @@
 */
 
 var fs = require('fs');
+var os = require('os');
 var path = require('path');
 var request = require('request');
 var cheerio = require('cheerio');
 var sleep = require('sleep').sleep;
 var argv = require('optimist').argv;
 var tftp = require('tftp');
+var Netmask = require('netmask').Netmask;
 
 // hack based on:
 // https://github.com/mikeal/request/issues/418
@@ -402,7 +404,56 @@ function flash_callback(err) {
             flash();
             return;
         }
-
 }
 
-flash();
+function checkNetworkConfig() {
+    if(!os.networkInterfaces) {
+        console.log("Remember to give you ethernet interface a static IP in the range 192.168.1.x (and not "+ip+") and ensure that no other network interfaces have an IP in the same range (hint: Turn off your wifi to be sure).");
+        return true;
+    }
+    var found = 0;
+    var ifaces = os.networkInterfaces();
+    var i, iface, addrs, addr, netmask;
+    for(iface in ifaces) {
+        addrs = ifaces[iface];
+        for(i=0; i < addrs.length; i++) {
+            addr = addrs[i];
+            if(addr.internal || addr.family != 'IPv4') continue;
+
+            if(addr.address == ip) {
+                console.error("Error: Your network adapater "+iface+" has the same IP as the router ("+ip+"). Flashing is not possible. Aborting.");
+                return false;
+            }
+
+            if(!addr.netmask) {
+                // node pre 0.11 did not include netmask so make assumptions
+                if(addr.address.match(/^10\./)) {
+                    addr.netmask = '255.0.0.0';
+                } else {
+                    addr.netmask = '255.255.255.0';
+                }
+            }
+            var block = new Netmask(addr.address+'/'+addr.netmask);
+            if(block.contains(ip)) {
+                found += 1;
+                break;
+            }
+        }
+    }
+
+    if(found == 0) {
+        console.error("========= WARNING =========");
+        console.error("It looks like you don't have any network interfaces configured with an IP on the same subnet as the router you are trying to flash ("+ip+"). Flashing is likely to fail. Consult the README if you are confused. Proceeding anyway in case you know what you are doing.");
+        console.error('');
+    } else if(found > 1) {
+        console.error("========= WARNING =========");
+        console.error("It looks like you have more than one network interfaces configured with an IP on the same subnet as the router you are trying to flash ("+ip+"). Flashing is likely to fail. Consult the README if you are confused. Proceeding anyway in case you know what you are doing.");
+        console.error('');
+    }
+
+    return true;
+}
+
+if(checkNetworkConfig()) {
+    flash();
+}
