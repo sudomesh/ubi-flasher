@@ -26,6 +26,11 @@ var request = require('request');
 var cheerio = require('cheerio');
 var sleep = require('sleep').sleep;
 var argv = require('optimist').argv;
+var tftp = require('tftp');
+
+// hack based on:
+// https://github.com/mikeal/request/issues/418
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 var username = argv.user || argv.username || 'ubnt';
 var password = argv.pass || argv.password || 'ubnt';
@@ -36,7 +41,31 @@ var host = 'http://'+ip;
 
 if(!argv.firmware) {
     // should be stderr
-    console.log("You must supply firmware filename with --firmware");
+    console.log('');
+    console.log("Usage: flasher.js --firmware <firmware.bin|directory>")
+    console.log('');
+    console.log(" --ip <ip_address>: Set IP of router (default: 192.168.1.20)");
+    console.log('');
+    console.log(" --tftp: Attempt to flash using tftp only (no web flashing)");
+    console.log('');
+    console.log(" --web: Attempt to flash using web only (no tftp flashing)");
+    console.log('');
+    console.log(" --fs <squashfs|jffs2>: If using a directory as --firmware argument,");
+    console.log("                        select squashfs or jffs2 images (default: squashfs or jffs2)")
+    console.log('');
+    console.log(" --debug: Enable verbose debug output");
+    console.log('');
+    console.log(" --retryonfail [seconds]: Retry after a failed attempt (default: disabled)");
+    console.log("                          Optionally set seconds to wait before retrying.");
+    console.log('');
+    console.log(" --retryonsuccess [seconds]: Retry after successful flashing (default: disabled)");
+    console.log("                             Optionally set seconds to wait before retrying.");
+    console.log('');
+    console.log("If a directory is specified as the --firmware argument, then the directory");
+    console.log("is expected to contain one or more OpenWRT images with the standard naming.")
+    console.log("Note that tftp flashing will be disabled if a directory is specified,");
+    console.log("since it is not possible to auto-detect router model via tftp.");
+    console.log('');
     process.exit(1);
 }
 
@@ -59,18 +88,19 @@ function confirm_upload(cb) {
     });
 }
 
-function select_firmware(model, dir) {
+function select_firmware(model, dir, fs) {
+    fs = fs || '';
     var regex = null;
     if(model.match(/rocket/i)) {
-        regex = /rocket.*m.*jffs2.*factory.*bin$/i
+        regex = new RegExp("rocket.*m.*"+fs+".*factory.*bin$", 'i');
     } else if(model.match(/nano/i)) {
-        regex = /nano.*m.*jffs2.*factory.*bin$/i
+        regex = new RegExp("nano.*m.*"+fs+".*factory.*bin$", 'i');
     } else if(model.match(/bullet/i)) {
-        regex = /bullet.*m.*jffs2.*factory.*bin$/i
+        regex = new RegExp("bullet.*m.*"+fs+".*factory.*bin$", 'i');
     } else if(model.match(/unifi.*outdoor/i)) {
-        regex = /unifi.*outdoor.*jffs2.*factory.*bin$/i
+        regex = new RegExp("unifi.*outdoor.*"+fs+".*factory.*bin$", 'i');
     } else if(model.match(/unifi/i)) {
-        regex = /unifi.*jffs2.*factory.*bin$/i
+        regex = new RegExp("unifi.*"+fs+".*factory.*bin$", 'i');
     } else {
         return null;
     }
@@ -94,7 +124,7 @@ function upload_firmware(model, cb) {
     var stats = fs.statSync(argv.firmware);
 
     if(stats.isDirectory()) {
-        firmware_path = select_firmware(model, argv.firmware);
+        firmware_path = select_firmware(model, argv.firmware, argv.fs);
         if(!firmware_path) {
             return cb("Error: Could not find the correct firmware for your device in the supplied directory. This could just be a failing of ubi-flasher.");
         }
@@ -160,12 +190,7 @@ function login_initial(cb) {
         }
         debug("Login appears to have been successful");
         
-
         check_model(cb);
-
-//        get('/upgrade.cgi', function(resp, body) {
-//            upload_firmware(cb);
-//        });
 
     });
 
@@ -242,18 +267,15 @@ function check_model(cb) {
 
 }
 
-// hack based on:
-// https://github.com/mikeal/request/issues/418
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+function webflash(url, cb) {
 
-function flash(url, cb) {
-
-    debug("Accessing " + url);
-
+    console.log("Accessing " + url);
+    
     request({
         method: 'GET',
         uri: url,
         jar: true,
+        timeout: 10000, // 10 second timeout
         rejectUnauthorized: true,
         strictSSL: false
     }, function(err, resp, body) {
@@ -286,30 +308,77 @@ function flash(url, cb) {
         } else {
             debug("Router is not asking us to select country.");
             login_normal(cb);
-        }
-        
+        }        
     });
 }
 
-function main() {
 
-    var login_url = host+'/login.cgi';
 
-    flash(login_url, function(err) {
+function tftpflash(callback) {
+    var stats = fs.statSync(argv.firmware);
+    if(stats.isDirectory()) {
+        if(argv.tftp) {
+            console.error("Automatic firmware selection is not possible using tftp.")
+            console.error("Please specify a file with --firmware instead of a directory.");
+            return false;
+        } else {
+            debug("Automatic firmware selection is not possible using tftp. Skipping.")
+            return false;
+        }
+    }
+
+
+    var client = tftp.createClient({
+        host: ip
+    });
+
+    console.log("Sending "+ argv.firmware + " to " + ip + " using tftp put");
+
+    client.put(argv.firmware, function(error) {
+        if(error) {
+            return callback(error);
+        }
+        callback(null);
+    });
+}
+
+
+
+var lastFlashType = null;
+
+function flash(newRouter) {
+    if(newRouter) { // start alternating anew 
+        lastFlashType = null;
+    }
+
+    // alternate between web and tftp flashing
+    // unless forced to use only one of the two
+    if(argv.tftp || (!argv.web && lastFlashType == 'web')) {
+        lastFlashType = 'tftp';
+        tftpflash(flash_callback);
+    } else {
+        lastFlashType = 'web';
+        var login_url = host+'/login.cgi';
+        webflash(login_url, flash_callback);
+    }
+}
+
+function flash_callback(err) {
         if(err) {
+            if(err.code == 'ETIMEDOUT') {
+                console.error("Connection timed out");
+            } else {
+                console.error(err);
+            }
             if(argv.retryonfail) {
-//            if((err.code == 'ECONNREFUSED') || (err.code == 'ENETUNREACH') || (err.code == 'EHOSTUNREACH')) {
-
                 var seconds = parseInt(argv.retryonfail);
                 seconds = (seconds >= 0) ? seconds : 5;
                 console.log("Could not connect. Retrying in " + seconds + " seconds.");
                 sleep(seconds);
                 console.log("Retrying.");
-                main();
+                flash();
                 return;
-//                }
             }
-            console.log(err);
             return;
         }
 
@@ -324,10 +393,10 @@ function main() {
             console.log("Will wait "+seconds+" before attempting to flash another device.");
             sleep(seconds);
             console.log("Retrying.");
-            main();
+            flash(true);
             return;
         }
-    });   
+
 }
 
-main();
+flash();

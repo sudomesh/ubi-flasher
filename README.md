@@ -1,8 +1,6 @@
 This is an automated firmware flasher for Ubiquiti AirMax devices.
 
-It flashes a new firmware onto these devices using their built-in web interface.
-
-Ubiquiti, AirMax, Picostation, Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor are registered trademarks of Ubiquiti Networks, Inc. Neither this program, nor its author, have any affiliation with Ubiquiti Networks, Inc.
+It flashes a new firmware onto these devices using their built-in web interface or tftp.
 
 # Setup #
 
@@ -87,8 +85,6 @@ After setting this up, your server will no longer be able to access 192.168.1.20
 
 # Limitations #
 
-If specifying a directory as the --directory argument, then the jffs2 filesystem version of the image will always be selected.
-
 So far, this program has only tested with a Ubiquiti Picostation 2 HP and a Ubiquiti Rocket M5.
 
 It seems that the Picostation 2 HP does not accept firmware images larger than 4 MB via the web upload procedure, even though it has 8 MB of flash. This is likely the case with all of the previous generation (802.11g) Ubiquiti AirMax gear. This is not an issue on the newer generation (802.11n) gear. You can still flash the older Ubiquiti gear with > 4 MB images using tftp, but this program does not support tftp.
@@ -105,9 +101,11 @@ Could use some more descriptive error messages. Especially with regards to wrong
 
 More testing would be nice.
 
-# License #
+# License, Copyright and Trademarks #
 
-GPLv3
+This software is licensed under the GPLv3. Copyright 2014 Marc Juul.
+
+Ubiquiti, AirMax, Picostation, Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor are registered trademarks of Ubiquiti Networks, Inc. Neither this program, nor its author, have any affiliation with Ubiquiti Networks, Inc.
 
 # Appreciation #
 
