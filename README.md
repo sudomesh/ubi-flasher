@@ -85,7 +85,7 @@ After setting this up, your server will no longer be able to access 192.168.1.20
 
 # Limitations #
 
-So far, this program has only tested with a Ubiquiti Picostation 2 HP and a Ubiquiti Rocket M5.
+So far, this program has only tested with a Ubiquiti Picostation 2 HP, Ubiquiti Rocket M5 and Ubiquiti Loco M2.
 
 It seems that the Picostation 2 HP does not accept firmware images larger than 4 MB via the web upload procedure, even though it has 8 MB of flash. This is likely the case with all of the previous generation (802.11g) Ubiquiti AirMax gear. This is not an issue on the newer generation (802.11n) gear. You can still flash the older Ubiquiti gear with > 4 MB images using tftp, but this program does not support tftp.
 

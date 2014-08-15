@@ -180,17 +180,20 @@ function get(url, cb) {
 // (the one you get if you've never logged in before)
 function login_initial(cb) {
 
+    console.log("Posting to: " + host+'/login.cgi');
+
     var r = request.post({
         uri: host+'/login.cgi',
         jar: true,
         rejectUnauthorized: true,
-        strictSSL: false
+        strictSSL: false,
+//        followAllRedirects: true
     }, function(err, resp, body) {
         if(err) throw("Error: " + err);
         if(resp.statusCode != 302) {
             throw("Error: Got unexpected response: " + resp.statusCode + "\n\n" + body);
         }
-        debug("Login appears to have been successful");
+        debug("Login appears to have been successful.");
         
         check_model(cb);
 
@@ -208,6 +211,8 @@ function login_initial(cb) {
     form.append('country', '840');
     form.append('ui_language', 'en_US');
     form.append('agreed', 'true');
+    form.append('lang_changed', 'no');
+    form.append('uri', '/');
 }
 
 // log in using the initial login screen
@@ -246,7 +251,7 @@ function check_model(cb) {
         if(title && (title.length >= 1)) {
             title = title.html();
             if(title && (title != '')) {
-                debug("<title> tag conatins: " + title);
+                debug("<title> tag contains: " + title);
                 var m = title.match(/\[([^\]]+)\]/);
                 if(m && (m.length >= 1)) {
                     model = m[1];
@@ -269,7 +274,7 @@ function check_model(cb) {
 
 }
 
-function webflash(host, cb) {
+function webflash(cb) {
 
     var url = host+'/login.cgi';
 
@@ -292,8 +297,8 @@ function webflash(host, cb) {
         if(!url.match(/^https/)) {
             if(resp.request && resp.request.uri && (resp.request.uri.protocol.match(/^https/))) {
                 debug("Switching to https");
-                host = 'https://'+ip;
-                flash(url.replace(/^http/, 'https'), cb);
+                host = host.replace(/^http/, 'https');
+                webflash(cb);
                 return;
             }
         }
@@ -351,9 +356,9 @@ function flash(newRouter) {
     if(argv.tftp) {
         tftpflash(flash_callback);
     } else if(argv.web) {
-        webflash(host, flash_callback);
+        webflash(flash_callback);
     } else {
-        webflash(host, function(err) {
+        webflash(function(err) {
             if(err) {
                 nice_error(err);
                 tftpflash(flash_callback);
