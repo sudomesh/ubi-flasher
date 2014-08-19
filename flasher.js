@@ -90,7 +90,7 @@ function confirm_upload(cb) {
     });
 }
 
-function select_firmware(model, dir, fs) {
+function select_firmware(model, dir, fs, callback) {
     fs = fs || '';
     var regex = null;
     if(model.match(/rocket/i)) {
@@ -107,56 +107,72 @@ function select_firmware(model, dir, fs) {
         return null;
     }
 
-    var files = fs.readdirSync(dir);
-    var i, file;
-    for(i=0; i < files.length; i++) {
-        file = files[i];
-        debug("Checking: " + file);
-        if(file.match(regex)) {
-            debug("Found firmware file matching router model: " + file);
-            return path.resolve(path.join(dir, file));
+    fs.readdir(dir, function(err, files) {
+        var i, file;
+        for(i=0; i < files.length; i++) {
+            file = files[i];
+            debug("Checking: " + file);
+            if(file.match(regex)) {
+                debug("Found firmware file matching router model: " + file);
+                callback(null, path.resolve(path.join(dir, file)));
+                return;
+            }
         }
-    }
-    return null;
+        callback(null, null);
+    });
 }
 
 function upload_firmware(model, cb) {
 
     var firmware_path;
-    var stats = fs.statSync(argv.firmware);
-
-    if(stats.isDirectory()) {
-        firmware_path = select_firmware(model, argv.firmware, argv.fs);
-        if(!firmware_path) {
-            return cb("Error: Could not find the correct firmware for your device in the supplied directory. This could just be a failing of ubi-flasher.");
-        }
-    } else if(stats.isFile()) {
-        firmware_path = argv.firmware;
-    } else {
-        return cb("Error: Specified firmware path is neither a directory nor a file");
-    }
-
-    var firmware = fs.readFileSync(firmware_path);
-
-    var r = request.post({
-        uri: host+'/upgrade.cgi',
-        jar: true
-    }, function(err, resp, body) {
+    fs.stat(argv.firmware, function(err, stats) {
         if(err) return cb(err);
-        if(resp.statusCode != 200) {
-            return cb("Error: got unexpected response for while trying to upload firmware: "+ resp.statusCode);
+
+        if(stats.isDirectory()) {
+            select_firmware(model, argv.firmware, argv.fs, function(err, firmware_path) {
+                if(!firmware_path) {
+                    return cb("Error: Could not find the correct firmware for your device in the supplied directory. This could just be a failing of ubi-flasher.");
+                }
+                
+                begin_upload(firmware_path, cb);
+                
+            });
+            return;
+        } else if(stats.isFile()) {
+            
+            begin_upload(argv.firmware, cb);
+            
+        } else {
+            return cb("Error: Specified firmware path is neither a directory nor a file");
         }
-        console.log("Firmware uploaded successfully.");
-        confirm_upload(cb);
     });
+}
 
-    var form = r.form();
+function begin_upload(firmware_path, cb) {
 
-    form.append('fwfile', firmware, {
-        header: "--" + form.getBoundary() + "\r\n" + "Content-Disposition: form-data; name=\"fwfile\"; filename=\"firmware.bin\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+    fs.readFile(firmware_path, function(err, data) {
+        if(err) return cb(err);
+
+        var r = request.post({
+            uri: host+'/upgrade.cgi',
+            jar: true
+        }, function(err, resp, body) {
+            if(err) return cb(err);
+            if(resp.statusCode != 200) {
+                return cb("Error: got unexpected response for while trying to upload firmware: "+ resp.statusCode);
+            }
+            console.log("Firmware uploaded successfully.");
+            confirm_upload(cb);
+        });
+        
+        var form = r.form();
+        
+        form.append('fwfile', firmware, {
+            header: "--" + form.getBoundary() + "\r\n" + "Content-Disposition: form-data; name=\"fwfile\"; filename=\"firmware.bin\"\r\nContent-Type: application/octet-stream\r\n\r\n"
+        });
+        
+        console.log("Sending firmware");
     });
-
-    console.log("Sending firmware");
 }
 
 // url is e.g. /index.cgi
@@ -324,30 +340,33 @@ function webflash(cb) {
 
 
 function tftpflash(callback) {
-    var stats = fs.statSync(argv.firmware);
-    if(stats.isDirectory()) {
-        if(argv.tftp) {
-            console.error("Automatic firmware selection is not possible using tftp.")
-            console.error("Please specify a file with --firmware instead of a directory.");
-            return false;
-        } else {
-            debug("Automatic firmware selection is not possible using tftp. Skipping.")
-            return false;
+    fs.stat(argv.firmware, function(err, stats) {
+        if(err) return callback(err);
+
+        if(stats.isDirectory()) {
+            if(argv.tftp) {
+                console.error("Automatic firmware selection is not possible using tftp.")
+                console.error("Please specify a file with --firmware instead of a directory.");
+                return callback(err);
+            } else {
+                debug("Automatic firmware selection is not possible using tftp. Skipping.")
+                return callback(err);
+            }
         }
-    }
 
 
-    var client = tftp.createClient({
-        host: ip
-    });
+        var client = tftp.createClient({
+            host: ip
+        });
+        
+        console.log("Sending "+ argv.firmware + " to " + ip + " using tftp put");
 
-    console.log("Sending "+ argv.firmware + " to " + ip + " using tftp put");
-
-    client.put(argv.firmware, function(error) {
-        if(error) {
-            return callback(error);
-        }
-        callback(null);
+        client.put(argv.firmware, function(error) {
+            if(error) {
+                return callback(error);
+            }
+            callback(null);
+        });
     });
 }
 
