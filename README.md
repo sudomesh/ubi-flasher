@@ -2,6 +2,8 @@ This is an automated firmware flasher for Ubiquiti AirMax devices.
 
 It flashes a new firmware onto these devices using their built-in web interface or tftp.
 
+SECURITY WARNING: If you are using this as a library, see the Known Issues section.
+
 # Setup #
 
 Install dependencies:
@@ -39,6 +41,18 @@ Auto-selecting the correct firmware:
 ```
 
 The above command expects a directory full of the various firmware files for the ar71xx like the one [here](http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/). It will attempt to auto-detect the model of router by inspecting the <title> tag on the index.cgi page of the router's web admin interface and look for the correct firmware file for the model in the supplied directory. Currently it will probably work with routers of the following types: Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor. Not all of those are tested and it will most definitely not work with any other models without tweaking the select_firmware function in flasher.js.
+
+# Usage as library #
+
+WARNING: Read the Known Issues section before proceeding.
+
+var UbiFlasher = require('ubi-flasher');
+var flasher = new Ubiflasher();
+flasher.flash({
+  firmware: 'firmware_file_path.bin'
+  // you can add more options here
+  // the options are the same as for the command line
+});
 
 # Setting up a flashing server #
 
@@ -91,7 +105,17 @@ It seems that the Picostation 2 HP does not accept firmware images larger than 4
 
 If the AirMax device has never been configured, then the flasher configures it to English for language and United States for country. This is not a problem if you're flashing e.g. OpenWRT, since that will override these settings.
 
-# Known issues #
+# Known Issues #
+
+WARNING: To get the SSL connection to succeed the following global flag is set:
+
+```
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+```
+
+This is going to allow all SSL/TLS connections, in any program that uses this library, even if security checks fail. Use at your own risk.
+
+If you are using node < 0.11 then the network configuration check will guess your subnet and it may guess wrong and give you an unnecessary warning.
 
 Currently there is a bug in the request library that causes the content-length to not be automatically calculated for multi-part posts. For this reason, ubiquiti-flasher is using [a patched version](https://github.com/juul/request) of request from for now.
 
