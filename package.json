@@ -1,6 +1,6 @@
 {
   "name": "ubi-flasher",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Un-official automatic flasher for Ubiquiti AirMax devices that can use either the router's web interface or tftp to flash a new firmware.",
   "dependencies": {
     "cheerio": "~0.13.1",
