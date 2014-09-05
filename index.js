@@ -335,21 +335,41 @@ function UbiFlasher() {
     };
 
 
-    this.flash = function(opts) {
+    this.flash = function(opts, cb) {
         this.opts = this.opts || opts || {};
+
+        // hack based on:
+        // https://github.com/mikeal/request/issues/418
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
+        this.opts.username = this.opts.username || this.opts.user || 'ubnt';
+        this.opts.password = this.opts.password || this.opts.pass || 'ubnt';
+
+        this.opts.ip = this.opts.ip || '192.168.1.20';
+        
+        this.opts.host = 'http://'+this.opts.ip;
+
+
+        cb = cb || function() {};
         if(!this.checkNetworkConfig()) {
             return;
         };
 
         if(this.opts.tftp) {
-            this.tftpflash(this.flash_callback.bind(this));
+            this.tftpflash(function(err) {
+                this.flash_callback(err, cb);
+            }.bind(this));
         } else if(this.opts.web) {
-            this.webflash(this.flash_callback.bind(this));
+            this.webflash(function(err) {
+                this.flash_callback(err, cb);
+            }.bind(this));
         } else {
             this.webflash(function(err) {
                 if(err) {
                     this.nice_error(err);
-                    this.tftpflash(this.flash_callback.bind(this));
+                    this.tftpflash(function(err) {
+                        this.flash_callback(err, cb);
+                    }.bind(this));
                 }
             }.bind(this))
         }
@@ -367,7 +387,7 @@ function UbiFlasher() {
         }
     };
 
-    this.flash_callback = function(err) {
+    this.flash_callback = function(err, cb) {
         if(err) {
             this.nice_error(err);
             if(this.opts.retryonfail) {
@@ -380,6 +400,7 @@ function UbiFlasher() {
                 }.bind(this), seconds * 1000);
                 return;
             }
+            cb(err);
             return;
         }
 
@@ -399,6 +420,7 @@ function UbiFlasher() {
             }.bind(this), seconds * 1000);
             return;
         }
+        cb(null);
     };
 
     this.checkNetworkConfig = function() {

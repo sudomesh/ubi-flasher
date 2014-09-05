@@ -23,16 +23,6 @@
 var argv = require('optimist').argv;
 var UbiFlasher = require('./index.js');
 
-// hack based on:
-// https://github.com/mikeal/request/issues/418
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
-argv.username = argv.username || argv.user || 'ubnt';
-argv.password = argv.password || argv.pass || 'ubnt';
-
-argv.ip = argv.ip || '192.168.1.20';
-
-argv.host = 'http://'+argv.ip;
 
 if(!argv.firmware) {
     // should be stderr
