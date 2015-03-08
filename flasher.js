@@ -20,7 +20,9 @@
   along with ubi-flasher. If not, see <http://www.gnu.org/licenses/>.
 */
 
-var argv = require('minimist')(process.argv.slice(2));
+var argv = require('minimist')(process.argv.slice(2), {
+    boolean: ['tftp', 'web', 'debug']
+});
 var UbiFlasher = require('./index.js');
 
 argv.firmware = argv.firmware || argv._[0];
