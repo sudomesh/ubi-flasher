@@ -20,14 +20,15 @@
   along with ubi-flasher. If not, see <http://www.gnu.org/licenses/>.
 */
 
-var argv = require('optimist').argv;
+var argv = require('minimist')(process.argv.slice(2));
 var UbiFlasher = require('./index.js');
 
+argv.firmware = argv.firmware || argv._[0];
 
 if(!argv.firmware) {
     // should be stderr
     console.log('');
-    console.log("Usage: flasher.js --firmware <firmware.bin|directory>")
+    console.log("Usage: flasher.js <firmware.bin|directory>")
     console.log('');
     console.log(" --ip <ip_address>: Set IP of router (default: 192.168.1.20)");
     console.log('');
@@ -35,7 +36,7 @@ if(!argv.firmware) {
     console.log('');
     console.log(" --web: Attempt to flash using web only (no tftp flashing)");
     console.log('');
-    console.log(" --fs <squashfs|jffs2>: If using a directory as --firmware argument,");
+    console.log(" --fs <squashfs|jffs2>: If using a directory argument,");
     console.log("                        select squashfs or jffs2 images (default: squashfs or jffs2)")
     console.log('');
     console.log(" --debug: Enable verbose debug output");
@@ -46,7 +47,7 @@ if(!argv.firmware) {
     console.log(" --retryonsuccess [seconds]: Retry after successful flashing (default: disabled)");
     console.log("                             Optionally set seconds to wait before retrying.");
     console.log('');
-    console.log("If a directory is specified as the --firmware argument, then the directory");
+    console.log("If a directory is specified as the argument, then the directory");
     console.log("is expected to contain one or more OpenWRT images with the standard naming.")
     console.log("Note that tftp flashing will be disabled if a directory is specified,");
     console.log("since it is not possible to auto-detect router model via tftp.");

@@ -324,13 +324,22 @@ function UbiFlasher() {
             });
             
             console.log("Sending "+ this.opts.firmware + " to " + this.opts.ip + " using tftp put");
-            
+  
+            fs.stat(this.opts.firmware, function(err, stats) {
+                if(err) {
+                    return fallback(err);
+                }
+            });
+            this.firmwareStream = fs.createReadStream(this.opts.firmware);
+
+            // TODO switch to client.createPutStream
             client.put(this.opts.firmware, function(error) {
                 if(error) {
                     return callback(error);
                 }
                 callback(null);
             }.bind(this));
+
         }.bind(this));
     };
 
