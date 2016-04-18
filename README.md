@@ -40,7 +40,7 @@ Auto-selecting the correct firmware:
 ./flasher.js --firmware openwrt/attitude_adjustment/12.09/ar71xx/generic/
 ```
 
-The above command expects a directory full of the various firmware files for the ar71xx like the one [here](http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/). It will attempt to auto-detect the model of router by inspecting the <title> tag on the index.cgi page of the router's web admin interface and look for the correct firmware file for the model in the supplied directory. Currently it will probably work with routers of the following types: Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor. Not all of those are tested and it will most definitely not work with any other models without tweaking the select_firmware function in flasher.js.
+The above command expects a directory full of the various firmware files for the ar71xx like the one [here](http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/). It will attempt to auto-detect the model of router by inspecting the &gt;title&lt; tag on the index.cgi page of the router's web admin interface and look for the correct firmware file for the model in the supplied directory. Currently it will probably work with routers of the following types: Rocket M, Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor. Not all of those are tested and it will most definitely not work with any other models without tweaking the select_firmware function in flasher.js.
 
 # Usage as library #
 
@@ -69,6 +69,7 @@ sudo chmod 755 /etc/init.d/ubiflasher
 sudo update-rc.d ubiflasher defaults
 sudo /etc/init.d/ubiflasher start
 ```
+
 Now the flasher is running, will start automatically on boot, and will flash any connected routers.
 
 Remember to set at least one interface on the server to have a static IP in the range 192.168.1.x and _not_ 192.168.1.20.
