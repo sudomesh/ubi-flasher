@@ -46,6 +46,7 @@ The above command expects a directory full of the various firmware files for the
 
 WARNING: Read the Known Issues section before proceeding.
 
+```
 var UbiFlasher = require('ubi-flasher');
 var flasher = new Ubiflasher();
 flasher.flash({
@@ -53,6 +54,7 @@ flasher.flash({
   // you can add more options here
   // the options are the same as for the command line
 });
+```
 
 # Setting up a flashing server #
 
