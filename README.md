@@ -1,10 +1,4 @@
-This is an automated firmware flasher for Ubiquiti AirMax devices.
-
-It flashes a new firmware onto these devices using their built-in web interface
-or tftp.
-
-SECURITY WARNING: If you are using this as a library, see the Known Issues
-section.
+This is an automated firmware flasher for Ubiquiti AirMax devices though it should be usable for flashing any router that needs a tftp client for flashing.
 
 # Setup #
 
@@ -26,53 +20,26 @@ assuming you supply username, password and ip if they have been altered.
 Simple example, for a router with default ip, username and password:
 
 ```
-./flasher.js --firmware myfirmware.bin
+./flasher.js myfirmware.bin
 ```
 
 All supported command line options:
 
 ```
-./flasher.js --user foo --pass bar --ip 10.0.0.1 --firmware myfirmware.bin --retryonfail 5 --retryonsuccess 20 --debug
+./flasher.js --ip 10.0.0.1 --firmware myfirmware.bin --retry 5 --debug
 ```
 
-The "--retryonfail 5" argument causes the flasher to retry every five seconds
-after failing to flash, no matter the type of failure, until it succeeds in
-flashing one device. When one device has been successfully flashed, the flasher
-will exit, unless "--retryonsuccess" has been specified.
-
-The "--retryonsuccess 20" argument causes the flasher to begin flashing again
-after waiting 20 seconds after a successful flash. This is useful for flashing
-multiple nodes without having to restart the flasher program.
-
-Auto-selecting the correct firmware:
-
-```
-./flasher.js --firmware openwrt/attitude_adjustment/12.09/ar71xx/generic/
-```
-
-The above command expects a directory full of the various firmware files for
-the ar71xx like the one
-[here](http://downloads.openwrt.org/attitude_adjustment/12.09/ar71xx/generic/).
-It will attempt to auto-detect the model of router by inspecting the
-&gt;title&lt; tag on the index.cgi page of the router's web admin interface and
-look for the correct firmware file for the model in the supplied directory.
-Currently it will probably work with routers of the following types: Rocket M,
-Nanobridge M, Nanostation M, Bullet M, Unifi and Unifi Outdoor. Not all of those
-are tested and it will most definitely not work with any other models without
-tweaking the select_firmware function in flasher.js.
+The "--retry 5" argument causes the flasher to retry every five seconds no matter if flashing failed or succeeded.
 
 # Usage as library #
-
-WARNING: Read the Known Issues section before proceeding.
 
 ```
 var UbiFlasher = require('ubi-flasher');
 var flasher = new Ubiflasher();
-flasher.flash({
-  firmware: 'firmware_file_path.bin'
+flasher.flash('firmware_file_path.bin', {
   // you can add more options here
   // the options are the same as for the command line
-});
+}, );
 ```
 
 # Setting up a flashing server #
@@ -132,51 +99,9 @@ After setting this up, your server will no longer be able to access 192.168.1.20
 nor 192.168.1.254 on the network connected to eth0, nor will computers on those
 IPs be able to communicate with your server.
 
-# Limitations #
-
-So far, this program has only tested with a Ubiquiti Picostation 2 HP, Ubiquiti
-Rocket M5 and Ubiquiti Loco M2.
-
-It seems that the Picostation 2 HP does not accept firmware images larger than 4
-MB via the web upload procedure, even though it has 8 MB of flash. This is
-likely the case with all of the previous generation (802.11g) Ubiquiti AirMax
-gear. This is not an issue on the newer generation (802.11n) gear. You can still
-flash the older Ubiquiti gear with > 4 MB images using tftp, but this program
-does not support tftp.
-
-If the AirMax device has never been configured, then the flasher configures it
-to English for language and United States for country. This is not a problem if
-you're flashing e.g. OpenWRT, since that will override these settings.
-
-# Known Issues #
-
-WARNING: To get the SSL connection to succeed the following global flag is set:
-
-```
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-```
-
-This is going to allow all SSL/TLS connections, in any program that uses this
-library, even if security checks fail. Use at your own risk.
-
-If you are using node < 0.11 then the network configuration check will guess
-your subnet and it may guess wrong and give you an unnecessary warning.
-
-Currently there is a bug in the request library that causes the content-length
-to not be automatically calculated for multi-part posts. For this reason,
-ubiquiti-flasher is using [a patched version](https://github.com/juul/request)
-of request from for now.
-
-# ToDo #
-
-Could use some more descriptive error messages. Especially with regards to wrong
-username, password or ip.
-
-More testing would be nice.
-
 # License, Copyright and Trademarks #
 
-This software is licensed under the GPLv3. Copyright 2014 Marc Juul.
+This software is licensed under the GPLv3. Copyright 2014, 2016 Marc Juul.
 
 Ubiquiti, AirMax, Picostation, Rocket M, Nanobridge M, Nanostation M, Bullet M,
 Unifi and Unifi Outdoor are registered trademarks of Ubiquiti Networks, Inc.

@@ -21,7 +21,7 @@ echo $UBIFLASHERPATH
 start()
 {
   echo "Starting ubi-flasher daemon"
-  start-stop-daemon --start --pidfile /var/run/ubiflasher.pid --chdir ${UBIFLASHERPATH} --background --make-pidfile -a ${UBIFLASHERPATH}/flasher.js -- --retryonfail 5 --retryonsuccess 20 --firmware $FIRMWARE
+  start-stop-daemon --start --pidfile /var/run/ubiflasher.pid --chdir ${UBIFLASHERPATH} --background --make-pidfile -a ${UBIFLASHERPATH}/flasher.js -- --retry 5 $FIRMWARE
 }
 
 stop()
